@@ -51,6 +51,8 @@ ul{margin:4px 0 0;padding-left:18px}.note{font-size:12px;color:var(--mut)}
 .tl td,.tl th{text-align:left}.mv{display:inline-flex;gap:3px}
 #learn details>*:not(summary){margin-left:12px;margin-right:12px;margin-bottom:10px}#learn li{margin-bottom:4px}
 @media (prefers-reduced-motion:reduce){.pg i{transition:none}}
+[hidden]{display:none!important}
+.gx{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px}.gc{border:1px solid var(--line);border-radius:6px;padding:10px;background:var(--bg)}.gh{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
 @media print{header,.side,.tool{display:none}main{display:block;padding:0}.cv{max-height:none}}
 </style>
 </head>
@@ -64,7 +66,7 @@ ul{margin:4px 0 0;padding-left:18px}.note{font-size:12px;color:var(--mut)}
 </header>
 <main>
 <aside class="side"><div class="card">
-<div class="tabs"><button id="t1" class="on">Setup</button><button id="t2">Process steps</button></div>
+<div class="tabs"><button id="t1" class="on">Setup</button><button id="t2">Process steps</button><button id="t3">Future state</button></div>
 <div id="p1" class="g2">
 <label class="full">Map title<input type="text" id="title"></label>
 <label>Company / site<input type="text" id="company"></label>
@@ -77,9 +79,21 @@ ul{margin:4px 0 0;padding-left:18px}.note{font-size:12px;color:var(--mut)}
 <label>Demand per day<input type="number" id="demand" min="0"></label>
 <label>Available min per day<input type="number" id="mins" min="0"></label>
 <label class="full">Cycle time unit<select id="unit"><option value="min">minutes</option><option value="sec">seconds</option></select></label>
+<label>Supplier delivery<input type="text" id="sup" placeholder="Daily"></label>
+<label>Shipping to customer<input type="text" id="ship" placeholder="Daily"></label>
+<label>Raw material stock (units)<input type="number" id="rm" min="0"></label>
+<label>Raw material target<input type="number" id="rmT" min="0"></label>
+<label>Finished goods (units)<input type="number" id="fg" min="0"></label>
+<label>Finished goods target<input type="number" id="fgT" min="0"></label>
 <p class="note full">Step type decides value-added time: value-add (VA), necessary non-value-add (NNVA) or non-value-add (NVA).</p>
 </div>
 <div id="p2" hidden><div id="steps"></div><button class="btn p" id="add">Add step</button></div>
+<div id="p3" hidden><div class="g2">
+<label class="full">Future state source<select id="fmode"><option value="custom">Custom: I set the values</option><option value="auto">Auto-suggested by rules</option></select></label>
+<label id="fr">Reduce WIP by %<input type="number" id="fred" min="0" max="95"></label>
+<div class="full"><button class="btn" id="fcopy">Copy suggestion into custom</button></div></div>
+<p class="note">Custom mode: leave a future field empty to keep today value. Changes show in the Future state view, comparison table and graphs.</p>
+<div id="fsteps"></div></div>
 </div>
 <div class="card by"><h3>👤 BUILT BY</h3><div class="nm">Md Shahariar Ahmed</div><div class="rl">Developer</div>
 <div class="chips"><span>📜 EIT (APEGS)</span><span>🥋 LSS Green Belt</span><span>🎓 M.Eng Industrial Systems Engineering</span><span>🎓 B.Sc Mechanical Engineering</span></div></div></aside>
@@ -88,11 +102,12 @@ ul{margin:4px 0 0;padding-left:18px}.note{font-size:12px;color:var(--mut)}
 <details class="how"><summary>How are these numbers calculated?</summary><div>
 <p>Takt time = available seconds per day ÷ customer demand per day.</p>
 <p>Effective cycle time = cycle time ÷ machines ÷ uptime ÷ yield. The step with the largest value is the bottleneck.</p>
-<p>Queue days = WIP before the step ÷ demand per day. Lead time = sum of all queue days.</p>
+<p>Queue time = sum of queue days (WIP ÷ demand per day, including raw material and finished goods). Lead time = queue time + processing time.</p>
 <p>Process cycle efficiency = value-add time ÷ (lead time × available seconds per day).</p>
 <p>Open the Learn section at the bottom for every step worked with your own numbers.</p></div></details>
 <div class="card">
 <div class="tool"><div class="seg"><button id="mc" class="on">Current state</button><button id="mf">Future state</button></div>
+<select id="view" aria-label="View style" style="width:auto"><option value="std">View: Standard map</option><option value="cmp">View: Compact map</option><option value="ver">View: Vertical flow</option><option value="tab">View: Data table</option></select>
 <span><button class="btn p" id="tp">▶ Play walkthrough</button> <button class="sm" id="tb" hidden>Back</button> <button class="sm" id="tn" hidden>Next</button> <button class="sm" id="te" hidden>Exit</button></span>
 <div><button class="sm" id="zo">Zoom -</button> <button class="sm" id="zi">Zoom +</button> <button class="sm" id="zf">Fit width</button></div></div>
 <div class="cv" id="map"></div>
@@ -100,7 +115,10 @@ ul{margin:4px 0 0;padding-left:18px}.note{font-size:12px;color:var(--mut)}
 <p class="note">Red outline = bottleneck. Starburst = kaizen opportunity (current state). Yellow tag = pacemaker (future state). Dashed arrows = push, FIFO and pull lanes are labelled.</p>
 </div>
 <div class="card"><h2>Current vs future state</h2><table id="cmp"></table></div>
-<div class="card"><h2>Effective cycle time vs takt</h2><div id="chart" style="overflow-x:auto"></div><div id="finds" class="note" style="margin-top:8px"></div></div>
+<div class="card"><div id="finds" class="note"></div></div>
+<div class="card"><h2>Graphs</h2><div class="tool"><select id="gsel" style="width:auto;max-width:340px" aria-label="Graph type"></select>
+<span><button class="btn p" id="gadd">Add graph</button> <button class="btn" id="gall">Add all</button> <button class="btn" id="gclr">Remove all</button></span></div>
+<div class="gx" id="gx"></div></div>
 <div class="card" id="learn"><h2>Learn the method and run your own study</h2>
 <details open><summary>Step-by-step: how to run a VSM study</summary><ol>
 <li><b>Pick one product family</b> that shares most process steps. Decide where the map starts (supplier or order) and ends (customer shipment).</li>
@@ -117,7 +135,7 @@ ul{margin:4px 0 0;padding-left:18px}.note{font-size:12px;color:var(--mut)}
 <li>Effective cycle time = cycle time ÷ machines ÷ uptime ÷ yield</li>
 <li>Daily capacity = available time per day ÷ effective cycle time</li>
 <li>Queue time (days) = WIP ÷ demand per day. This is Little Law: flow time = WIP ÷ throughput</li>
-<li>Lead time = sum of queue times. Add curing, transport or other waits as WIP if they must be counted</li>
+<li>Queue time = sum of queue times (steps, raw material, finished goods). Lead (throughput) time = queue time + processing time. Add curing, transport or other waits as WIP if they must be counted</li>
 <li>Value-add time = sum of cycle times of value-add steps</li>
 <li>Process cycle efficiency = value-add time ÷ lead time</li>
 <li>Bottleneck = step with the largest effective cycle time</li></ul></details>
@@ -133,7 +151,7 @@ ul{margin:4px 0 0;padding-left:18px}.note{font-size:12px;color:var(--mut)}
 <tr><td>Resources</td><td>Count parallel machines and operators</td><td>Machines, Operators</td></tr>
 <tr><td>Targets</td><td>Agreed in an improvement workshop after takt and flow design</td><td>WIP target, flow</td></tr></table></details>
 <details><summary>Map symbols</summary><ul>
-<li>Triangle with I = inventory (queue) before a step</li><li>Thick dashed arrow = push: work moves without a signal from the next step</li>
+<li>Triangle with I = inventory (queue) before a step</li><li>Truck = delivery with its frequency. Factory icon = supplier or customer</li><li>Bar under each step = value-add (green), necessary non-value-add (amber) or non-value-add (red)</li><li>Thick dashed arrow = push: work moves without a signal from the next step</li>
 <li>Solid arrow labelled FIFO = first-in first-out lane with a maximum WIP</li><li>Solid arrow labelled Pull = next step takes what it needs from a supermarket</li>
 <li>Blue lines = information flow from customer to planning to supplier and steps</li><li>Red outline = bottleneck. Starburst K = kaizen opportunity. Yellow tag = pacemaker</li></ul></details>
 <details><summary>Study materials and practice</summary><ul>
@@ -149,7 +167,7 @@ ul{margin:4px 0 0;padding-left:18px}.note{font-size:12px;color:var(--mut)}
 <li>Practice 4: change WIP targets until lead time drops by half, then play the walkthrough</li></ul></details></div></section>
 </main>
 <script>
-const $=id=>document.getElementById(id),S={},FL=["title","company","product","customer","supplier","planning","info1","info2","demand","mins","unit"];
+const $=id=>document.getElementById(id),S={},FL=["title","company","product","customer","supplier","planning","info1","info2","demand","mins","unit","sup","ship","rm","rmT","fg","fgT","fmode","fred","view"];
 const N=v=>{v=parseFloat(v);return isFinite(v)?v:0},fmt=(n,d=1)=>Number(n).toLocaleString(undefined,{maximumFractionDigits:d}),esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mk=(b,r)=>({...b,procs:r.map(a=>({name:a[0],type:a[1],ct:a[2],co:a[3],up:a[4],yld:a[5],mc:a[6],op:a[7],wip:a[8],fw:a[9],flow:a[10],pm:!!a[11],kz:a[12]||""}))});
 const T={
@@ -160,34 +178,50 @@ assembly:mk({title:"VSM: Fabricated Product Assembly Line",company:"Sample Plant
 office:mk({title:"VSM: Loan Application Process",company:"Sample Bank",product:"Personal loan",customer:"Applicant",supplier:"Credit bureau",planning:"Operations manager",info1:"Application",info2:"Credit request",demand:60,mins:480,unit:"min"},[
 ["Intake","va",6,0,90,95,1,1,120,60,"push",0,""],["Document check","va",12,0,90,92,2,2,200,80,"fifo",0,"Missing documents"],["Credit check","va",15,0,90,95,3,3,150,60,"fifo",1,""],["Approval","nnva",10,0,90,97,2,2,80,40,"fifo",0,"Batch approvals daily"],["Disbursement","va",8,0,90,99,1,1,60,30,"pull",0,""]])};
 let mode="c",zoom=1;
-function load(d){Object.keys(S).forEach(k=>delete S[k]);Object.assign(S,JSON.parse(JSON.stringify(d)));FL.forEach(f=>$(f).value=S[f]);steps();draw()}
+function load(d){Object.keys(S).forEach(k=>delete S[k]);Object.assign(S,DEF(),JSON.parse(JSON.stringify(d)));FL.forEach(f=>$(f).value=S[f]);steps();draw()}
 const sel=(i,k,o,v)=>`<select data-i="${i}" data-k="${k}">${o.map(x=>`<option value="${x[0]}" ${x[0]===v?"selected":""}>${x[1]}</option>`).join("")}</select>`;
+const num=(i,k,l,p,ph)=>`<label>${l}<input type="number" step="any" min="0" data-i="${i}" data-k="${k}" value="${esc(p[k]??"")}" ${ph?`placeholder="${ph}"`:""}></label>`;
 function steps(o){
- const num=(i,k,l,p)=>`<label>${l}<input type="number" step="any" min="0" data-i="${i}" data-k="${k}" value="${esc(p[k])}"></label>`;
  $("steps").innerHTML=S.procs.map((p,i)=>`<details ${i===(o??0)?"open":""}><summary><span class="n">${i+1}. ${esc(p.name)}</span><span class="bd ${p.type}">${p.type.toUpperCase()}</span><span class="mv"><button class="sm" data-m="${i}" data-d="-1" title="Move step up" aria-label="Move step up">▲</button><button class="sm" data-m="${i}" data-d="1" title="Move step down" aria-label="Move step down">▼</button></span></summary><div class="dt"><div class="g2">
 <label class="full">Name<input type="text" data-i="${i}" data-k="name" value="${esc(p.name)}"></label>
-<label>Step type${sel(i,"type",[["va","Value-add"],["nnva","Necessary non-VA"],["nva","Non-value-add"]],p.type)}</label>
-<label>Flow to next step${sel(i,"flow",[["push","Push"],["fifo","FIFO lane"],["pull","Pull / supermarket"]],p.flow)}</label>
-${num(i,"ct","Cycle time per unit",p)}${num(i,"co","Changeover (min)",p)}${num(i,"up","Uptime %",p)}${num(i,"yld","Yield %",p)}${num(i,"mc","Machines in parallel",p)}${num(i,"op","Operators",p)}${num(i,"wip","WIP now",p)}${num(i,"fw","WIP target",p)}
+<label class="full">Step type${sel(i,"type",[["va","Value-add"],["nnva","Necessary non-VA"],["nva","Non-value-add"]],p.type)}</label>
+${num(i,"ct","Cycle time per unit",p)}${num(i,"co","Changeover (min)",p)}${num(i,"up","Uptime %",p)}${num(i,"yld","Yield %",p)}${num(i,"mc","Machines in parallel",p)}${num(i,"op","Operators",p)}${num(i,"wip","WIP now (queue before step)",p)}
 <label class="full">Kaizen note<input type="text" data-i="${i}" data-k="kz" value="${esc(p.kz)}"></label>
-<label><input type="checkbox" data-i="${i}" data-k="pm" ${p.pm?"checked":""}> Pacemaker</label>
-<div style="text-align:right"><button class="sm" data-m="${i}" data-d="-1">Up</button> <button class="sm" data-m="${i}" data-d="1">Down</button> <button class="sm" data-x="${i}">Remove</button></div>
-</div></div></details>`).join("")}
+<div class="full" style="text-align:right"><button class="sm" data-m="${i}" data-d="-1">Up</button> <button class="sm" data-m="${i}" data-d="1">Down</button> <button class="sm" data-x="${i}">Remove</button></div>
+</div></div></details>`).join("");fsteps(o)}
+function fsteps(o){const A=S.fmode==="auto";$("fcopy").hidden=!A;$("fr").hidden=!A;
+ if(A){const R=calc();$("fsteps").innerHTML="<p class='note'>Rules: WIP target = current WIP reduced by the percentage above. First step push, last step pull, others FIFO. The bottleneck is the pacemaker. Machines are added to any step slower than takt (aim for 95 % of takt).</p><ul>"+R.P.map(x=>`<li><b>${esc(x.p.name)}</b>: WIP ${fmt(N(x.p.wip),0)} to ${fmt(x.f.fw,0)}, ${x.f.flow}${x.f.mc>Math.max(1,N(x.p.mc))?`, machines ${fmt(Math.max(1,N(x.p.mc)),0)} to ${fmt(x.f.mc,0)}`:""}${x.f.pm?", pacemaker":""}</li>`).join("")+"</ul>";return}
+ $("fsteps").innerHTML=S.procs.map((p,i)=>`<details ${i===(o??0)?"open":""}><summary><span class="n">${i+1}. ${esc(p.name)}</span></summary><div class="dt"><div class="g2">
+${num(i,"fct","Future cycle time",p,"same as now")}${num(i,"fmc","Future machines",p,"same")}${num(i,"fup","Future uptime %",p,"same")}${num(i,"fyld","Future yield %",p,"same")}${num(i,"fw","WIP target",p)}
+<label>Flow to next step${sel(i,"flow",[["push","Push"],["fifo","FIFO lane"],["pull","Pull / supermarket"]],p.flow)}</label>
+<label class="full"><input type="checkbox" data-i="${i}" data-k="pm" ${p.pm?"checked":""}> Pacemaker (sets the schedule)</label></div></div></details>`).join("")}
 function calc(){
- const avail=N(S.mins)*60,dem=N(S.demand),takt=dem>0?avail/dem:0,k=S.unit==="min"?60:1;
- const R={avail,dem,takt,va:0,nn:0,nv:0,ltC:0,ltF:0,wc:0,wf:0,bn:-1,bv:0};
- R.P=S.procs.map((p,i)=>{
+ const avail=N(S.mins)*60,dem=N(S.demand),takt=dem>0?avail/dem:0,k=S.unit==="min"?60:1,n=S.procs.length;
+ const R={avail,dem,takt,va:0,nn:0,nv:0,vaF:0,nnF:0,nvF:0,qC:0,qF:0,wc:0,wf:0,bn:-1,bv:0,bnF:-1,bvF:0};
+ R.P=S.procs.map(p=>{
   const ct=N(p.ct)*k,eff=ct/Math.max(1,N(p.mc))/Math.max(.01,N(p.up)/100)/Math.max(.01,N(p.yld)/100);
-  R[p.type==="va"?"va":p.type==="nnva"?"nn":"nv"]+=ct;
-  const dc=dem>0?N(p.wip)/dem:0,df=dem>0?N(p.fw)/dem:0;R.ltC+=dc;R.ltF+=df;R.wc+=N(p.wip);R.wf+=N(p.fw);
-  if(eff>R.bv){R.bv=eff;R.bn=i}
-  return{p,ct,eff,dc,df,cap:eff>0?avail/eff:0}});
- const pce=l=>l>0&&avail>0?R.va/(l*avail)*100:0;R.pc=pce(R.ltC);R.pf=pce(R.ltF);R.pt=R.va+R.nn+R.nv;return R}
+  R[p.type==="va"?"va":p.type==="nnva"?"nn":"nv"]+=ct;const dc=dem>0?N(p.wip)/dem:0;R.qC+=dc;R.wc+=N(p.wip);
+  return{p,ct,eff,dc,cap:eff>0?avail/eff:0}});
+ R.P.forEach((x,i)=>{if(x.eff>R.bv){R.bv=x.eff;R.bn=i}});
+ const A=S.fmode==="auto",red=N(S.fred)/100,bl=v=>v===undefined||v===""||v===null;
+ R.P.forEach((x,i)=>{const p=x.p,pk=(key,cur)=>bl(p[key])?cur:N(p[key]);let fw,flow,pm,fct,fmc,fup,fy;
+  if(A){fw=Math.round(N(p.wip)*(1-red));flow=i===n-1?"pull":i===0?"push":"fifo";pm=i===R.bn;fct=x.ct;fup=N(p.up);fy=N(p.yld);fmc=Math.max(1,N(p.mc));
+   if(takt>0&&x.eff>takt)fmc=Math.max(fmc,Math.ceil(x.ct/(takt*.95*Math.max(.01,fup/100)*Math.max(.01,fy/100))))}
+  else{fw=N(p.fw);flow=p.flow;pm=!!p.pm;fct=pk("fct",N(p.ct))*k;fmc=Math.max(1,pk("fmc",N(p.mc)));fup=pk("fup",N(p.up));fy=pk("fyld",N(p.yld))}
+  const fe=fct/fmc/Math.max(.01,fup/100)/Math.max(.01,fy/100);
+  x.f={fw,flow,pm,ct:fct,mc:fmc,up:fup,yld:fy,eff:fe};x.p=Object.assign({},p,{fw,flow,pm});
+  x.df=dem>0?fw/dem:0;R.qF+=x.df;R.wf+=fw;R[p.type==="va"?"vaF":p.type==="nnva"?"nnF":"nvF"]+=fct;
+  if(fe>R.bvF){R.bvF=fe;R.bnF=i}});
+ const rd=dem>0?[N(S.rm)/dem,N(S.rmT)/dem,N(S.fg)/dem,N(S.fgT)/dem]:[0,0,0,0];R.rd=rd;
+ R.qC+=rd[0]+rd[2];R.qF+=rd[1]+rd[3];R.wc+=N(S.rm)+N(S.fg);R.wf+=N(S.rmT)+N(S.fgT);
+ R.pt=R.va+R.nn+R.nv;R.ptF=R.vaF+R.nnF+R.nvF;
+ R.ltC=R.qC+(avail>0?R.pt/avail:0);R.ltF=R.qF+(avail>0?R.ptF/avail:0);
+ const pce=(v,l)=>l>0&&avail>0?v/(l*avail)*100:0;R.pc=pce(R.va,R.ltC);R.pf=pce(R.vaF,R.ltF);return R}
 function results(R){
  const d=(a,b)=>a>0?`<i>${fmt((b-a)/a*100,0)} % target</i>`:"";
- $("kp").innerHTML=[["Takt time",fmt(R.takt,2)+" s",""],["Lead time now",fmt(R.ltC,2)+" days",`<i>${fmt(R.ltF,2)} days target</i>`],["Total WIP",fmt(R.wc,0),d(R.wc,R.wf)],["Process cycle efficiency",fmt(R.pc,3)+" %",`<i>${fmt(R.pf,3)} % target</i>`],["Bottleneck",R.bn>=0?esc(R.P[R.bn].p.name):"-",R.bn>=0?`<i>${fmt(R.bv,1)} s effective</i>`:""]].map(a=>`<div class="k"><span>${a[0]}</span><b style="font-size:${a[0]==="Bottleneck"?"15px":"20px"}">${a[1]}</b>${a[2]}</div>`).join("");
+ $("kp").innerHTML=[["Takt time",fmt(R.takt,2)+" s",""],["Lead time now",fmt(R.ltC,2)+" days",`<i>${fmt(R.ltF,2)} days target</i>`],["Total WIP",fmt(R.wc,0),d(R.wc,R.wf)],["Process cycle efficiency",fmt(R.pc,3)+" %",`<i>${fmt(R.pf,3)} % target</i>`],["Value-add time",tmf(R.va),`<i>${tmf(R.vaF)} future</i>`],["Non-value-add time",tmf(R.nn+R.nv),`<i>${tmf(R.nnF+R.nvF)} future</i>`],["Queue time",fmt(R.qC,2)+" days",`<i>${fmt(R.qF,2)} days future</i>`],["Bottleneck",R.bn>=0?esc(R.P[R.bn].p.name):"-",R.bn>=0?`<i>${fmt(R.bv,1)} s effective</i>`:""]].map(a=>`<div class="k"><span>${a[0]}</span><b style="font-size:${a[0]==="Bottleneck"?"15px":"20px"}">${a[1]}</b>${a[2]}</div>`).join("");
  const row=(l,a,b,u,dd=1)=>`<tr><td>${l}</td><td>${fmt(a,dd)}${u}</td><td>${fmt(b,dd)}${u}</td><td class="${b<a?"good":""}">${a?fmt((b-a)/a*100,0)+" %":"-"}</td></tr>`;
- $("cmp").innerHTML=`<tr><th>Metric</th><th>Current</th><th>Future</th><th>Change</th></tr>`+row("Lead time",R.ltC,R.ltF," days",2)+row("Total WIP",R.wc,R.wf," units",0)+`<tr><td>Process cycle efficiency</td><td>${fmt(R.pc,3)} %</td><td>${fmt(R.pf,3)} %</td><td class="${R.pf>R.pc?"good":""}">${R.pc?"+"+fmt((R.pf-R.pc)/R.pc*100,0)+" %":"-"}</td></tr>`+`<tr><td>Value-add / NNVA / NVA time</td><td colspan="3">${fmt(R.va,1)} s / ${fmt(R.nn,1)} s / ${fmt(R.nv,1)} s</td></tr>`;
+ $("cmp").innerHTML=`<tr><th>Metric</th><th>Current</th><th>Future</th><th>Change</th></tr>`+row("Lead time",R.ltC,R.ltF," days",2)+row("Total WIP",R.wc,R.wf," units",0)+`<tr><td>Process cycle efficiency</td><td>${fmt(R.pc,3)} %</td><td>${fmt(R.pf,3)} %</td><td class="${R.pf>R.pc?"good":""}">${R.pc?"+"+fmt((R.pf-R.pc)/R.pc*100,0)+" %":"-"}</td></tr>`+`<tr><td>Value-add time</td><td>${tmf(R.va)}</td><td>${tmf(R.vaF)}</td><td>${R.va?fmt((R.vaF-R.va)/R.va*100,0)+" %":"-"}</td></tr><tr><td>Non-value-add time (NNVA + NVA)</td><td>${tmf(R.nn+R.nv)}</td><td>${tmf(R.nnF+R.nvF)}</td><td>-</td></tr><tr><td>Queue time (waiting)</td><td>${fmt(R.qC,2)} days</td><td>${fmt(R.qF,2)} days</td><td class="${R.qF<R.qC?"good":""}">${R.qC?fmt((R.qF-R.qC)/R.qC*100,0)+" %":"-"}</td></tr><tr><td>Bottleneck effective C/T</td><td>${fmt(R.bv,1)} s</td><td>${fmt(R.bvF,1)} s</td><td>-</td></tr>`;
  const over=R.P.filter(x=>R.takt>0&&x.eff>R.takt),big=[...R.P].sort((a,b)=>b.dc-a.dc)[0];
  let h="<b>Findings</b><ul>";
  if(R.bn>=0)h+=`<li>${esc(R.P[R.bn].p.name)} limits output at about ${fmt(R.P[R.bn].cap,0)} units/day against demand of ${fmt(R.dem,0)}.</li>`;
@@ -203,61 +237,58 @@ function chart(R){
  s+=`<line class="tk" x1="34" x2="${W}" y1="${y(R.takt)}" y2="${y(R.takt)}" stroke-dasharray="5 4"/><text x="36" y="${y(R.takt)-4}" style="fill:var(--bad)">takt ${fmt(R.takt,1)} s</text></svg>`;
  $("chart").innerHTML=s}
 function svg(R){
- const fut=mode==="f",n=R.P.length,bw=120,st=180,x0=200,W=x0+n*st+170,H=450,lx=x0+(n-1)*st,cx=lx+bw+40;
- let s=`<svg id="vsm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W*zoom}" height="${H*zoom}" font-family="Segoe UI,Arial,sans-serif"><style>
-.t{fill:#17211e;font-size:12px}.h{fill:#17211e;font-size:13px;font-weight:700}.m{fill:#5b6965;font-size:11px}.b{fill:#fff;stroke:#374151;stroke-width:1.5}.d{fill:#f1f4f2;stroke:#374151;stroke-width:1.2}.l{stroke:#374151;fill:none;stroke-width:1.5}.ls{stroke:#374151;fill:none;stroke-width:3;stroke-dasharray:7 4}.i{stroke:#2563eb;fill:none;stroke-width:1.3}.il{fill:#2563eb;font-size:11px}.tri{fill:#fde68a;stroke:#92400e;stroke-width:1.3}.bn{stroke:#c0392b;stroke-width:3.5}.kz{fill:#fbbf24;stroke:#b45309;stroke-width:1.3}.pm{fill:#fde047;stroke:#a16207}
-@media (prefers-color-scheme:dark){.t,.h{fill:#e6edea}.m{fill:#98a7a1}.b{fill:#182120;stroke:#98a7a1}.d{fill:#202b29;stroke:#98a7a1}.l,.ls{stroke:#98a7a1}.tri{fill:#8a6d1a;stroke:#fde68a}.i{stroke:#7fb0ff}.il{fill:#7fb0ff}.pm{fill:#8a7a10}}
-</style><defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0L8,4L0,8z" fill="#6b7280"/></marker></defs>`;
- const tx=(x,y,t,c="t",a="start")=>`<text x="${x}" y="${y}" class="${c}" text-anchor="${a}">${esc(t)}</text>`;
- s+=tx(W/2,18,(S.title||"Value Stream Map")+(fut?" (future state)":" (current state)"),"h","middle");
+ const fut=mode==="f",C=S.view==="cmp",n=R.P.length,bw=C?108:120,st=C?168:180,x0=C?190:200,f=fmt,dl=C?4:8,bot=196+dl*14+8;
+ const W=Math.max(700,x0+n*st+170),lx=x0+(n-1)*st,cx=lx+bw+40,yL=bot+50,yS=yL+82,H=yS+112,bi=fut?R.bnF:R.bn,px=W/2-110,tn={va:"VA",nnva:"NNVA",nva:"NVA"};
+ let s=head(W,H)+tx(W/2,18,(S.title||"Value Stream Map")+(fut?" (future state)":" (current state)"),"h","middle");
  if(S.company)s+=tx(W/2,32,S.company,"m","middle");
- s+=`<rect class="b" x="10" y="170" width="110" height="64"/>`+tx(65,190,"Supplier","h","middle")+tx(65,208,S.supplier.slice(0,22),"m","middle");
- s+=`<rect class="b" x="${cx}" y="170" width="110" height="64"/>`+tx(cx+55,190,"Customer","h","middle")+tx(cx+55,208,S.customer.slice(0,22),"m","middle")+tx(cx+55,224,fmt(R.dem,0)+" / day","m","middle");
- const px=W/2-110;
+ s+=fac(10,160,110,74)+tx(65,190,"Supplier","h","middle")+tx(65,208,S.supplier.slice(0,22),"m","middle")+truck(126,186,S.sup||"");
+ s+=fac(cx,160,110,74)+tx(cx+55,190,"Customer","h","middle")+tx(cx+55,208,S.customer.slice(0,22),"m","middle")+tx(cx+55,224,f(R.dem,0)+" / day","m","middle")+truck(lx+bw+8,186,S.ship||"");
  s+=`<rect class="b" x="${px}" y="42" width="220" height="42"/>`+tx(W/2,60,"Planning / control","h","middle")+tx(W/2,76,S.planning.slice(0,38),"m","middle");
- s+=`<path class="i" d="M${cx+55},170V63H${px+220}"/>`+tx(cx+60,110,S.info1,"il")+`<path class="i" d="M65,170V63H${px}"/>`+tx(70,110,S.info2,"il")+`<path class="i" d="M${W/2},84V120M${x0+bw/2},120H${lx+bw/2}"/>`;
+ s+=`<path class="i" d="M${cx+55},160V63H${px+220}"/>`+tx(cx+60,110,S.info1,"il")+`<path class="i" d="M65,160V63H${px}"/>`+tx(70,110,S.info2,"il")+`<path class="i" d="M${W/2},84V120M${x0+bw/2},120H${lx+bw/2}"/>`;
  s+=`<path class="ls" d="M120,202H${x0-48}" marker-end="url(#a)"/>`;
+ if(N(S.rm)+N(S.rmT)>0)s+=tri(65,246,f(fut?N(S.rmT):N(S.rm),0),f(R.rd[fut?1:0],2)+" d","Raw material");
+ if(N(S.fg)+N(S.fgT)>0)s+=tri(cx+55,246,f(fut?N(S.fgT):N(S.fg),0),f(R.rd[fut?3:2],2)+" d","Finished goods");
  R.P.forEach((x,i)=>{
-  const bx=x0+i*st,p=x.p,wip=fut?N(p.fw):N(p.wip),days=fut?x.df:x.dc;
-  s+=`<path class="i" d="M${bx+bw/2},120V170"/>`;
-  s+=`<polygon class="tri" points="${bx-45},222 ${bx-15},222 ${bx-30},190"/>`+tx(bx-30,215,"I","m","middle")+tx(bx-30,238,fmt(wip,0),"t","middle")+tx(bx-30,252,fmt(days,2)+" d","m","middle");
-  s+=`<path class="l" d="M${bx-15},206H${bx-1}" marker-end="url(#a)"/>`;
-  s+=`<rect class="b${i===R.bn?" bn":""}" x="${bx}" y="170" width="${bw}" height="26"/>`+tx(bx+bw/2,188,p.name.slice(0,17),"h","middle")+`<rect class="d" x="${bx}" y="196" width="${bw}" height="98"/>`;
-  [["C/T",fmt(x.ct,1)+" s"],["Eff. C/T",fmt(x.eff,1)+" s"],["C/O",fmt(N(p.co),0)+" min"],["Uptime",fmt(N(p.up),0)+" %"],["Yield",fmt(N(p.yld),0)+" %"],["Mach / Op",fmt(N(p.mc),0)+" / "+fmt(N(p.op),0)]].forEach((r,j)=>s+=tx(bx+6,212+j*15,r[0]+": "+r[1]));
+  const bx=x0+i*st,p=x.p,ty=p.type,v=fut?x.f:{ct:x.ct,eff:x.eff,mc:Math.max(1,N(p.mc)),up:N(p.up),yld:N(p.yld)},wip=fut?N(p.fw):N(p.wip),days=fut?x.df:x.dc;
+  s+=`<path class="i" d="M${bx+bw/2},120V170"/>`+tri(bx-30,190,f(wip,0),f(days,2)+" d")+`<path class="l" d="M${bx-15},206H${bx-1}" marker-end="url(#a)"/>`;
+  s+=`<rect class="b${i===bi?" bn":""}" x="${bx}" y="170" width="${bw}" height="26"/>`+tx(bx+bw/2,188,p.name.slice(0,C?14:17),"h","middle")+`<rect class="d" x="${bx}" y="196" width="${bw}" height="${dl*14+8}"/>`;
+  [["Type: "+tn[ty],ty],["C/T: "+f(v.ct,1)+" s"],["Eff. C/T: "+f(v.eff,1)+" s"],["% takt: "+(R.takt>0?f(v.eff/R.takt*100,0):"-")+" %"],["C/O: "+f(N(p.co),0)+" min"],["Uptime: "+f(v.up,0)+" %"],["Yield: "+f(v.yld,0)+" %"],["Mach / Op: "+f(v.mc,0)+" / "+f(N(p.op),0)]].slice(0,dl).forEach((r,j)=>s+=tx(bx+6,212+j*14,r[0],r[1]||"t"));
   const ex=i<n-1?bx+st-48:cx,ar=fut?p.flow:"push";
   if(ar==="push")s+=`<path class="ls" d="M${bx+bw},206H${ex}" marker-end="url(#a)"/>`;
-  else{s+=`<path class="l" d="M${bx+bw},206H${ex}" marker-end="url(#a)"/>`+tx((bx+bw+ex)/2,198,ar==="fifo"?"FIFO":"Pull","m","middle");if(ar==="fifo"&&i<n-1)s+=tx((bx+bw+ex)/2,220,"max "+fmt(N(S.procs[i+1].fw),0),"m","middle")}
+  else{s+=`<path class="l" d="M${bx+bw},206H${ex}" marker-end="url(#a)"/>`+tx((bx+bw+ex)/2,198,ar==="fifo"?"FIFO":"Pull","m","middle");if(ar==="fifo"&&i<n-1)s+=tx((bx+bw+ex)/2,220,"max "+f(N(R.P[i+1].p.fw),0),"m","middle")}
   if(fut&&p.pm)s+=`<rect class="pm" x="${bx+10}" y="146" width="100" height="18" rx="9"/>`+tx(bx+60,159,"Pacemaker","t","middle");
   if(!fut&&p.kz){const kx=bx+bw-4,ky=156,pts=[];for(let a=0;a<16;a++){const r=a%2?9:16,t=a*Math.PI/8;pts.push((kx+r*Math.cos(t)).toFixed(1)+","+(ky+r*Math.sin(t)).toFixed(1))}
-   s+=`<polygon class="kz" points="${pts.join(" ")}"/>`+tx(kx,160,"K","h","middle")+tx(bx+bw/2,312,p.kz.slice(0,22),"m","middle")}
+   s+=`<polygon class="kz" points="${pts.join(" ")}"/>`+tx(kx,160,"K","h","middle")+tx(bx+bw/2,bot+16,p.kz.slice(0,C?16:22),"m","middle")}
  });
- let d=`M${x0-60},350`;
- R.P.forEach((x,i)=>{const bx=x0+i*st;d+=`H${bx}V376H${bx+bw}V350`;s+=tx(bx-30,342,fmt(fut?x.df:x.dc,2)+" d","t","middle")+tx(bx+bw/2,396,fmt(x.ct,1)+" s","t","middle")});
- s+=`<path class="l" d="${d}H${lx+bw+20}"/>`+tx(W/2,432,`Lead time ${fmt(fut?R.ltF:R.ltC,2)} days   |   Value-add time ${fmt(R.va,1)} s   |   PCE ${fmt(fut?R.pf:R.pc,3)} %   |   Takt ${fmt(R.takt,2)} s`,"h","middle");
- return s+"</svg>"}
-let tm;function draw(){const R=calc();results(R);chart(R);$("map").innerHTML=svg(R);worked(R);if(tour.on)overlay(R);clearTimeout(tm);tm=setTimeout(()=>{try{localStorage.setItem("vsmstudio",JSON.stringify(S))}catch(e){}},400)}
+ let d=`M${x0-60},${yL}`;s+=tx(10,yL-8,"Queue time","m")+tx(10,yL+40,"Processing","m");
+ R.P.forEach((x,i)=>{const bx=x0+i*st,ty=x.p.type,dd=fut?x.df:x.dc,ct=fut?x.f.ct:x.ct;d+=`H${bx}V${yL+26}H${bx+bw}V${yL}`;
+  s+=tx(bx-30,yL-8,f(dd,2)+" d","t","middle")+tx(bx+bw/2,yL+46,f(ct,1)+" s","t","middle")+`<rect class="c${ty}" x="${bx}" y="${yL+23}" width="${bw}" height="7"/>`+tx(bx+bw/2,yL+60,{va:"Value-add",nnva:"Necessary NVA",nva:"Non-value-add"}[ty],ty,"middle")});
+ s+=`<path class="l" d="${d}H${lx+bw+20}"/>`;
+ const sx=Math.max(W-310,330);
+ return s+summ(R,fut,sx,yS)+bnr(R,fut,10,yS,sx-24)+"</svg>"}
+let tm;function draw(){const R=calc();results(R);$("map").innerHTML=viewHtml(R);gx(R);worked(R);if(S.fmode==="auto")fsteps();if(tour.on)overlay(R);clearTimeout(tm);tm=setTimeout(()=>{try{localStorage.setItem("vsmstudio",JSON.stringify(S))}catch(e){}},400)}
 document.addEventListener("input",e=>{const t=e.target;
- if(FL.includes(t.id)){S[t.id]=t.value;draw()}
+ if(FL.includes(t.id)){S[t.id]=t.value;if(t.id==="fmode")fsteps();draw()}
  else if(t.dataset.k){const p=S.procs[t.dataset.i];p[t.dataset.k]=t.type==="checkbox"?t.checked:t.value;
   if(t.dataset.k==="name")t.closest("details").querySelector(".n").textContent=(+t.dataset.i+1)+". "+t.value;
   if(t.dataset.k==="type"){const b=t.closest("details").querySelector(".bd");b.className="bd "+t.value;b.textContent=t.value.toUpperCase()}
   if(t.dataset.k==="pm"&&t.checked)S.procs.forEach((q,j)=>{if(j!=t.dataset.i){q.pm=false;const c=document.querySelector(`[data-i="${j}"][data-k="pm"]`);if(c)c.checked=false}});
   draw()}});
-document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;if(t.dataset.m!==undefined||t.dataset.x!==undefined)e.preventDefault();
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;if(t.dataset.m!==undefined||t.dataset.x!==undefined)e.preventDefault();if(t.dataset.gx){S.charts=S.charts.filter(c=>c!==t.dataset.gx);draw()}
  if(t.dataset.x!==undefined){S.procs.splice(+t.dataset.x,1);steps();draw()}
  if(t.dataset.m!==undefined){const i=+t.dataset.m,j=i+ +t.dataset.d;if(j>=0&&j<S.procs.length){[S.procs[i],S.procs[j]]=[S.procs[j],S.procs[i]];steps(j);draw()}}});
-const tab=n=>{$("p1").hidden=n!==1;$("p2").hidden=n!==2;$("t1").classList.toggle("on",n===1);$("t2").classList.toggle("on",n===2)};
-$("p2").hidden=true;$("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);
+const tab=n=>{$("p1").hidden=n!==1;$("p2").hidden=n!==2;$("p3").hidden=n!==3;[1,2,3].forEach(k=>$("t"+k).classList.toggle("on",n===k))};
+$("p2").hidden=true;$("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);$("t3").onclick=()=>tab(3);
 $("add").onclick=()=>{S.procs.push({name:"New step",type:"va",ct:1,co:0,up:100,yld:100,mc:1,op:1,wip:0,fw:0,flow:"fifo",pm:false,kz:""});steps();draw()};
 $("tpl").onchange=e=>load(T[e.target.value]);
 const setM=m=>{mode=m;$("mc").classList.toggle("on",m==="c");$("mf").classList.toggle("on",m==="f");draw()};
 $("mc").onclick=()=>setM("c");$("mf").onclick=()=>setM("f");
 $("zi").onclick=()=>{zoom=Math.min(2,zoom+.15);draw()};$("zo").onclick=()=>{zoom=Math.max(.3,zoom-.15);draw()};
-$("zf").onclick=()=>{const w=+$("map").querySelector("svg").viewBox.baseVal.width;zoom=Math.max(.3,($("map").clientWidth-4)/w);draw()};
+$("zf").onclick=()=>{const sv=$("map").querySelector("svg");if(!sv)return;const w=+sv.viewBox.baseVal.width;zoom=Math.max(.3,($("map").clientWidth-4)/w);draw()};
 const dl=(name,data,type)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click()};
 const clean=()=>$("map").innerHTML.replace(/@media[^{]*\{[\s\S]*?\}\}/,"").replace(/ width="[\d.]+" height="[\d.]+"/,"");
 $("xs").onclick=()=>dl("value-stream-map.svg",clean(),"image/svg+xml");
-$("xp").onclick=()=>{const v=document.getElementById("vsm").viewBox.baseVal,im=new Image();
+$("xp").onclick=()=>{if(!document.getElementById("vsm")){alert("Switch to a map view to export an image.");return}const v=document.getElementById("vsm").viewBox.baseVal,im=new Image();
  im.onload=()=>{const c=document.createElement("canvas");c.width=v.width*2;c.height=v.height*2;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);c.toBlob(b=>dl("value-stream-map.png",b,"image/png"))};
  im.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(clean().replace("<svg ",`<svg width="${v.width}" height="${v.height}" `))};
 $("xc").onclick=()=>{const R=calc(),h=["Step","Type","Cycle time (s)","Effective C/T (s)","Changeover (min)","Uptime %","Yield %","Machines","Operators","WIP now","WIP target","Flow","Kaizen"];
@@ -272,7 +303,7 @@ function worked(R){const f=fmt,L=[];
  L.push(`<li><b>Takt time</b> = ${f(R.avail,0)} s ÷ ${f(R.dem,0)} units = <b>${f(R.takt,2)} s</b> per unit.</li>`);
  L.push(`<li><b>Effective cycle time</b> = cycle time ÷ machines ÷ uptime ÷ yield:<ul>${R.P.map(x=>`<li>${esc(x.p.name)}: ${f(x.ct,1)} ÷ ${f(Math.max(1,N(x.p.mc)),0)} ÷ ${f(N(x.p.up)/100,2)} ÷ ${f(N(x.p.yld)/100,2)} = ${f(x.eff,2)} s (${x.eff>R.takt?"slower than takt":"meets takt"}, capacity ${f(x.cap,0)} per day)</li>`).join("")}</ul>The largest value is the bottleneck.</li>`);
  L.push(`<li><b>Queue time</b> = WIP ÷ demand per day:<ul>${R.P.map(x=>`<li>${esc(x.p.name)}: ${f(N(x.p.wip),0)} ÷ ${f(R.dem,0)} = ${f(x.dc,2)} days (target ${f(N(x.p.fw),0)} units = ${f(x.df,2)} days)</li>`).join("")}</ul></li>`);
- L.push(`<li><b>Lead time</b> = sum of queue times = <b>${f(R.ltC,2)} days</b> now and ${f(R.ltF,2)} days at target WIP.</li>`);
+ L.push(`<li><b>Queue time</b> = sum of the queue days above (plus raw material and finished goods) = <b>${f(R.qC,2)} days</b> now and ${f(R.qF,2)} days in the future state. <b>Lead time</b> = queue time + processing time (${f(R.pt,1)} s ÷ ${f(R.avail,0)} s per day) = <b>${f(R.ltC,2)} days</b>.</li>`);
  L.push(`<li><b>Value-add time</b> = sum of cycle times of value-add steps = ${f(R.va,1)} s.</li>`);
  L.push(`<li><b>Process cycle efficiency</b> = ${f(R.va,1)} ÷ (${f(R.ltC,2)} × ${f(R.avail,0)}) = <b>${f(R.pc,3)} %</b> now and ${f(R.pf,3)} % in the future state.</li>`);
  $("wk").innerHTML="<ol>"+L.join("")+"</ol>"}
@@ -288,14 +319,14 @@ function moveTok(tx,ty){const el=document.getElementById("tok");if(!el)return;co
  (function a(t){const k=Math.min(1,(t-t0)/D),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;el.setAttribute("cx",fx+(tx-fx)*e);el.setAttribute("cy",fy+(ty-fy)*e);if(k<1&&tour.on)requestAnimationFrame(a);else{tour.px=tx;tour.py=ty}})(t0)}
 function overlay(R){const st=stages(R),s=st[Math.min(tour.i,st.length-1)],sv=$("map").querySelector("svg");if(!sv)return;let h="";
  const gl=(x,y,w,hh)=>`<rect x="${x}" y="${y}" width="${w}" height="${hh}" rx="6" fill="none" stroke="#f59e0b" stroke-width="3"><animate attributeName="stroke-opacity" values="1;.25;1" dur="1.2s" repeatCount="indefinite"/></rect>`;
- if(s.q!==undefined){const b=200+s.q*180,p=S.procs[s.q],k=Math.min(1,N(p.fw)/Math.max(N(p.wip),1));
+ if(s.q!==undefined){const b=200+s.q*180,p=R.P[s.q].p,k=Math.min(1,N(p.fw)/Math.max(N(p.wip),1));
   h+=gl(b-52,184,46,72)+`<polygon points="${b-30-15*k},222 ${b-30+15*k},222 ${b-30},${222-32*k}" fill="none" stroke="#0e7a6a" stroke-width="2" stroke-dasharray="4 3"/><text x="${b-30}" y="270" text-anchor="middle" font-size="11" fill="#0e7a6a">target ${fmt(N(p.fw),0)}</text>`}
- if(s.b!==undefined)h+=gl(200+s.b*180-4,166,128,132);
+ if(s.b!==undefined)h+=gl(200+s.b*180-4,166,128,154);
  h+=`<circle id="tok" cx="${tour.px}" cy="${tour.py}" r="9" fill="#0e7a6a" stroke="#fff" stroke-width="2"/>`;
  sv.insertAdjacentHTML("beforeend",h);moveTok(s.x,s.y);
  $("map").scrollTo({left:Math.max(0,s.x*zoom-$("map").clientWidth/2),behavior:"smooth"})}
 const tl=()=>{["tb","tn","te"].forEach(i=>$(i).hidden=!tour.on);$("tp").textContent=!tour.on?"▶ Play walkthrough":tour.play?"⏸ Pause":"▶ Resume"};
-function go(k){const R=calc(),st=stages(R);k=Math.max(0,Math.min(st.length-1,k));tour.i=k;const s=st[k];mode=s.m;
+function go(k){const R=calc(),st=stages(R);k=Math.max(0,Math.min(st.length-1,k));tour.i=k;const s=st[k];mode=s.m;if(S.view!=="std"){S.view="std";$("view").value="std"}
  $("mc").classList.toggle("on",mode==="c");$("mf").classList.toggle("on",mode==="f");
  $("cap").hidden=false;$("cap").innerHTML=`<div class="pg"><i style="width:${(k+1)/st.length*100}%"></i></div><b>${k+1} of ${st.length}: ${esc(s.t)}</b><p>${esc(s.x2)}</p>`;
  draw();clearTimeout(tour.t);if(tour.play){if(k<st.length-1)tour.t=setTimeout(()=>go(k+1),6500);else tour.play=false}tl()}
@@ -303,6 +334,68 @@ $("tp").onclick=()=>{if(!tour.on){tour.on=true;tour.play=true;tour.px=65;tour.py
  else{tour.play=!tour.play;if(tour.play)go(tour.i>=calc().P.length*2+2?0:tour.i);else clearTimeout(tour.t);tl()}};
 $("tn").onclick=()=>{tour.play=false;go(tour.i+1)};$("tb").onclick=()=>{tour.play=false;go(tour.i-1)};
 $("te").onclick=()=>{tour.on=false;tour.play=false;clearTimeout(tour.t);$("cap").hidden=true;tl();draw()};
+const DEF=()=>({sup:"Daily",ship:"Daily",rm:0,rmT:0,fg:0,fgT:0,fmode:"custom",fred:35,view:"std",charts:["eff","queue","wip"]});
+Object.assign(T.assembly,{rm:480,rmT:240,fg:240,fgT:120,sup:"Weekly"});
+function tmf(s){return s>=7200?fmt(s/3600,1)+" hrs":s>=120?fmt(s/60,1)+" min":fmt(s,1)+" s"}
+const STY=`<style>.t{fill:#17211e;font-size:12px}.h{fill:#17211e;font-size:13px;font-weight:700}.m{fill:#5b6965;font-size:11px}.b{fill:#fff;stroke:#374151;stroke-width:1.5}.d{fill:#f1f4f2;stroke:#374151;stroke-width:1.2}.l{stroke:#374151;fill:none;stroke-width:1.5}.ls{stroke:#374151;fill:none;stroke-width:3;stroke-dasharray:7 4}.i{stroke:#2563eb;fill:none;stroke-width:1.3}.il{fill:#2563eb;font-size:11px}.tri{fill:#fde68a;stroke:#92400e;stroke-width:1.3}.bn{stroke:#c0392b;stroke-width:3.5}.kz{fill:#fbbf24;stroke:#b45309;stroke-width:1.3}.pm{fill:#fde047;stroke:#a16207}.va{fill:#0e7a6a;font-size:11px;font-weight:700}.nnva{fill:#b45309;font-size:11px;font-weight:700}.nva{fill:#c0392b;font-size:11px;font-weight:700}.cva{fill:#0e7a6a}.cnnva{fill:#d97706}.cnva{fill:#c0392b}.sum{fill:#e3f6f1;stroke:#0e7a6a;stroke-width:1.5}.bnr{fill:#dff4fa;stroke:#374151}.tk{fill:#cbd5e1;stroke:#374151}.tw{fill:#111}.qb{fill:#f59e0b}
+@media (prefers-color-scheme:dark){.t,.h{fill:#e6edea}.m{fill:#98a7a1}.b{fill:#182120;stroke:#98a7a1}.d{fill:#202b29;stroke:#98a7a1}.l,.ls{stroke:#98a7a1}.tri{fill:#8a6d1a;stroke:#fde68a}.i{stroke:#7fb0ff}.il{fill:#7fb0ff}.pm{fill:#8a7a10}.va{fill:#4cc0a5}.nnva{fill:#f0b44c}.nva{fill:#ff7a6b}.sum{fill:#1c2f2a}.bnr{fill:#1d3239}.tk{fill:#475569;stroke:#98a7a1}.tw{fill:#e5e7eb}}
+</style><defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0L8,4L0,8z" fill="#6b7280"/></marker></defs>`;
+const head=(W,H)=>`<svg id="vsm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W*zoom}" height="${H*zoom}" font-family="Segoe UI,Arial,sans-serif">`+STY;
+const tx=(x,y,t,c="t",a="start")=>`<text x="${x}" y="${y}" class="${c}" text-anchor="${a}">${esc(t)}</text>`;
+const fac=(x,y,w,h)=>`<path class="b" d="M${x},${y+h}V${y+10}L${x+w/3},${y}V${y+10}L${x+2*w/3},${y}V${y+10}L${x+w},${y}V${y+h}Z"/>`;
+const truck=(x,y,l)=>`<rect class="tk" x="${x}" y="${y}" width="18" height="11"/><rect class="tk" x="${x+18}" y="${y+4}" width="8" height="7"/><circle class="tw" cx="${x+5}" cy="${y+13}" r="2.5"/><circle class="tw" cx="${x+21}" cy="${y+13}" r="2.5"/>`+tx(x+13,y-4,String(l).slice(0,9),"m","middle");
+const tri=(x,y,a,b,c)=>`<polygon class="tri" points="${x-15},${y+32} ${x+15},${y+32} ${x},${y}"/>`+tx(x,y+25,"I","m","middle")+tx(x,y+48,a,"t","middle")+tx(x,y+62,b,"m","middle")+(c?tx(x,y+76,c,"m","middle"):"");
+function summ(R,fut,sx,yS){const f=fmt,va=fut?R.vaF:R.va,nv=fut?R.nnF+R.nvF:R.nn+R.nv,q=fut?R.qF:R.qC,lt=fut?R.ltF:R.ltC,pc=fut?R.pf:R.pc;
+ return `<rect class="sum" x="${sx}" y="${yS}" width="300" height="100" rx="4"/>`+[["Value-add time",tmf(va)],["Non-value-add time",tmf(nv)],["Queue time",f(q,2)+" days"],["Lead (throughput) time",f(lt,2)+" days"],["Process cycle efficiency",f(pc,3)+" %"]].map((r,j)=>tx(sx+12,yS+22+j*18,r[0]+":","h")+tx(sx+288,yS+22+j*18,r[1],"h","end")).join("")}
+function bnr(R,fut,x,y,w){const P=R.P[fut?R.bnF:R.bn];if(!P)return"";const q=fut?R.qF:R.qC,lt=fut?R.ltF:R.ltC;
+ return `<rect class="bnr" x="${x}" y="${y}" width="${w}" height="44" rx="4"/>`+tx(x+12,y+19,"Constraint is "+P.p.name.slice(0,26),"h")+tx(x+12,y+36,`C/T ${fmt(fut?P.f.eff:P.eff,1)} s vs takt ${fmt(R.takt,1)} s. Waiting is ${fmt(lt>0?q/lt*100:0,1)} % of lead time.`,"m")}
+function svgV(R){const fut=mode==="f",n=R.P.length,f=fmt,W=820,r0=130,rh=96,yc=r0+n*rh+10,H=yc+210,bi=fut?R.bnF:R.bn,tn={va:"VA",nnva:"NNVA",nva:"NVA"};
+ const qm=Math.max(1e-4,...R.P.map(z=>fut?z.df:z.dc)),cm=Math.max(1e-4,...R.P.map(z=>fut?z.f.ct:z.ct));
+ let s=head(W,H)+tx(W/2,18,(S.title||"Value Stream Map")+(fut?" (future state)":" (current state)"),"h","middle");
+ s+=fac(110,34,160,56)+tx(190,66,"Supplier: "+S.supplier.slice(0,18),"h","middle")+`<path class="ls" d="M190,90V${r0-4}" marker-end="url(#a)"/>`+truck(200,98,S.sup||"");
+ if(N(S.rm)+N(S.rmT)>0)s+=tri(50,30,f(fut?N(S.rmT):N(S.rm),0),f(R.rd[fut?1:0],2)+" d","Raw material");
+ s+=tx(500,r0-14,"Queue (days) and processing time (s)","m");
+ R.P.forEach((x,i)=>{const p=x.p,y=r0+i*rh,ty=p.type,v=fut?x.f:{ct:x.ct,eff:x.eff,mc:Math.max(1,N(p.mc)),up:N(p.up),yld:N(p.yld)},dd=fut?x.df:x.dc,ar=fut?p.flow:"push";
+  s+=tri(50,y+8,f(fut?N(p.fw):N(p.wip),0),f(dd,2)+" d")+`<path class="l" d="M68,${y+30}H108" marker-end="url(#a)"/>`;
+  s+=`<rect class="b${i===bi?" bn":""}" x="110" y="${y}" width="360" height="70"/>`+tx(120,y+18,`${i+1}. ${p.name.slice(0,30)}`,"h")+tx(460,y+18,tn[ty],ty,"end")+tx(120,y+38,`C/T ${f(v.ct,1)} s    Eff. ${f(v.eff,1)} s    ${R.takt>0?f(v.eff/R.takt*100,0):"-"} % of takt`)+tx(120,y+57,`Uptime ${f(v.up,0)} %   Yield ${f(v.yld,0)} %   Machines ${f(v.mc,0)}   Operators ${f(N(p.op),0)}   C/O ${f(N(p.co),0)} min`,"m");
+  s+=`<path class="${ar==="push"?"ls":"l"}" d="M290,${y+70}V${y+rh+8}" marker-end="url(#a)"/>`+tx(300,y+88,ar==="push"?"Push":ar==="fifo"?"FIFO":"Pull","m");
+  const ql=Math.max(2,dd/qm*200),cl=Math.max(2,(fut?x.f.ct:x.ct)/cm*200);
+  s+=`<rect class="qb" x="500" y="${y+8}" width="${ql}" height="16"/>`+tx(506+ql,y+20,f(dd,2)+" d")+`<rect class="c${ty}" x="500" y="${y+38}" width="${cl}" height="16"/>`+tx(506+cl,y+50,f(fut?x.f.ct:x.ct,1)+" s")});
+ s+=fac(110,yc,160,56)+tx(190,yc+38,"Customer: "+S.customer.slice(0,18),"h","middle")+truck(380,yc-18,S.ship||"");
+ if(N(S.fg)+N(S.fgT)>0)s+=tri(50,yc+4,f(fut?N(S.fgT):N(S.fg),0),f(R.rd[fut?3:2],2)+" d","Finished goods");
+ return s+summ(R,fut,110,yc+90)+bnr(R,fut,430,yc+90,360)+"</svg>"}
+function tbl(R){const fut=mode==="f",f=fmt,tn={va:"VA",nnva:"NNVA",nva:"NVA"},bi=fut?R.bnF:R.bn;
+ return `<div style="padding:10px;min-width:780px"><table><tr><th>#</th><th>Step</th><th>Type</th><th>C/T (s)</th><th>Eff. C/T (s)</th><th>% takt</th><th>Queue WIP</th><th>Queue (days)</th><th>Uptime %</th><th>Yield %</th><th>Machines</th><th>Flow</th></tr>`+R.P.map((x,i)=>{const p=x.p,v=fut?x.f:{ct:x.ct,eff:x.eff,mc:Math.max(1,N(p.mc)),up:N(p.up),yld:N(p.yld)};
+  return `<tr${i===bi?' style="color:var(--bad);font-weight:600"':""}><td>${i+1}</td><td>${esc(p.name)}</td><td>${tn[p.type]}</td><td>${f(v.ct,1)}</td><td>${f(v.eff,1)}</td><td>${R.takt>0?f(v.eff/R.takt*100,0):"-"}</td><td>${f(fut?N(p.fw):N(p.wip),0)}</td><td>${f(fut?x.df:x.dc,2)}</td><td>${f(v.up,0)}</td><td>${f(v.yld,0)}</td><td>${f(v.mc,0)}</td><td>${fut?p.flow:"push"}</td></tr>`}).join("")+`</table><p class="note">Red row = bottleneck. Value-add ${tmf(fut?R.vaF:R.va)}, non-value-add ${tmf(fut?R.nnF+R.nvF:R.nn+R.nv)}, queue ${f(fut?R.qF:R.qC,2)} days, lead time ${f(fut?R.ltF:R.ltC,2)} days.</p></div>`}
+function viewHtml(R){const v=S.view||"std";return v==="tab"?tbl(R):v==="ver"?svgV(R):svg(R)}
+const GC={now:"#0e7a6a",fut:"#2563eb",va:"#0e7a6a",nn:"#d97706",nv:"#c0392b",q:"#f59e0b"};
+const lg=a=>`<div class="note">${a.map(s=>`<span style="color:${s.c}">■</span> ${esc(s.n)}`).join(" &nbsp; ")}</div>`;
+function bars(L,S2,o={}){const k=L.length,sn=S2.length,gw=o.stack?60:Math.max(1,sn)*26+18,W=60+k*gw,H=200,pb=44,pt=14,off=o.stack?20:Math.max(1,sn)*13-2;
+ const all=[...(o.stack?L.map((_,i)=>S2.reduce((a,s)=>a+s.v[i],0)):S2.flatMap(s=>s.v)),...(o.lines||[]).flatMap(s=>s.v),o.line||0],m0=Math.max(1e-9,...all),mx=m0*1.15,y=v=>H-pb-v/mx*(H-pb-pt);
+ let s=`<svg class="ch" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><line x1="40" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line)"/><text x="2" y="${y(m0)+4}">${fmt(m0,m0<10?1:0)}</text>`;
+ L.forEach((lb,i)=>{const x=46+i*gw;
+  if(o.stack){let a=0;S2.forEach(se=>{const v=se.v[i];if(v>0){s+=`<rect x="${x}" y="${y(a+v)}" width="40" height="${y(a)-y(a+v)}" fill="${se.c}"/>`;a+=v}})}
+  else S2.forEach((se,j)=>{const v=se.v[i];s+=`<rect x="${x+j*26}" y="${y(v)}" width="22" height="${Math.max(0,y(0)-y(v))}" fill="${se.c}" rx="2"/>`;if(sn===1)s+=`<text x="${x+11}" y="${y(v)-3}" text-anchor="middle">${fmt(v,v<10?2:0)}</text>`});
+  s+=`<text x="${x+off}" y="${H-pb+14}" text-anchor="middle">${esc(lb.slice(0,9))}</text>`});
+ (o.lines||[]).forEach(se=>{s+=`<polyline fill="none" stroke="${se.c}" stroke-width="2.5" points="${se.v.map((v,i)=>(46+i*gw+off)+","+y(v)).join(" ")}"/>`+se.v.map((v,i)=>`<circle cx="${46+i*gw+off}" cy="${y(v)}" r="3" fill="${se.c}"/>`).join("")});
+ if(o.line)s+=`<line x1="40" x2="${W}" y1="${y(o.line)}" y2="${y(o.line)}" stroke="var(--bad)" stroke-dasharray="5 4"/><text x="42" y="${y(o.line)-4}" style="fill:var(--bad)">${o.ll} ${fmt(o.line,1)}</text>`;
+ return s+"</svg>"+lg([...S2,...(o.lines||[])])}
+function donut(P){const t=P.reduce((a,p)=>a+p.v,0)||1,C=2*Math.PI*50;let acc=0;
+ return `<svg class="ch" viewBox="0 0 130 130" width="130" height="130"><g transform="rotate(-90 65 65)">${P.map(p=>{const l=p.v/t*C,e=`<circle cx="65" cy="65" r="50" fill="none" stroke="${p.c}" stroke-width="22" stroke-dasharray="${l} ${C-l}" stroke-dashoffset="${-acc}"/>`;acc+=l;return e}).join("")}</g></svg><div class="note">${P.map(p=>`<div><span style="color:${p.c}">■</span> ${esc(p.n)}: ${fmt(p.v/t*100,3)} %</div>`).join("")}</div>`}
+const nm=R=>R.P.map(x=>x.p.name),cum=a=>a.reduce((r,v)=>(r.push((r.length?r[r.length-1]:0)+v),r),[]);
+const GR={
+ eff:["Effective cycle time vs takt (s)",R=>bars(nm(R),[{n:"Now",c:GC.now,v:R.P.map(x=>x.eff)},{n:"Future",c:GC.fut,v:R.P.map(x=>x.f.eff)}],{line:R.takt,ll:"takt"})],
+ queue:["Queue time per step (days)",R=>bars(nm(R),[{n:"Now",c:GC.now,v:R.P.map(x=>x.dc)},{n:"Future",c:GC.fut,v:R.P.map(x=>x.df)}])],
+ wip:["WIP per step (units)",R=>bars(nm(R),[{n:"Now",c:GC.now,v:R.P.map(x=>N(S.procs[R.P.indexOf(x)].wip))},{n:"Future",c:GC.fut,v:R.P.map(x=>x.f.fw)}])],
+ cap:["Daily capacity vs demand (units)",R=>bars(nm(R),[{n:"Now",c:GC.now,v:R.P.map(x=>x.cap)},{n:"Future",c:GC.fut,v:R.P.map(x=>x.f.eff>0?R.avail/x.f.eff:0)}],{line:R.dem,ll:"demand"})],
+ bal:["Line balance: time per unit by type (s)",R=>bars(nm(R),[{n:"Value-add",c:GC.va,v:R.P.map(x=>x.p.type==="va"?x.ct:0)},{n:"Necessary NVA",c:GC.nn,v:R.P.map(x=>x.p.type==="nnva"?x.ct:0)},{n:"Non-value-add",c:GC.nv,v:R.P.map(x=>x.p.type==="nva"?x.ct:0)}],{stack:1,line:R.takt,ll:"takt"})],
+ mix:["Where the time goes (current)",R=>donut([{n:"Value-add",c:GC.va,v:R.va},{n:"Necessary NVA",c:GC.nn,v:R.nn},{n:"Non-value-add",c:GC.nv,v:R.nv},{n:"Waiting in queue",c:GC.q,v:R.qC*R.avail}])],
+ cum:["Cumulative queue time (days)",R=>bars(nm(R),[],{lines:[{n:"Now",c:GC.now,v:cum(R.P.map(x=>x.dc))},{n:"Future",c:GC.fut,v:cum(R.P.map(x=>x.df))}]})]};
+function gx(R){$("gx").innerHTML=S.charts.filter(c=>GR[c]).map(c=>`<div class="gc"><div class="gh"><b>${GR[c][0]}</b><button class="sm" data-gx="${c}" aria-label="Remove graph">✕</button></div><div style="overflow-x:auto">${GR[c][1](R)}</div></div>`).join("")||'<p class="note">No graphs yet. Pick one above and press Add graph.</p>'}
+$("gsel").innerHTML=Object.keys(GR).map(k=>`<option value="${k}">${GR[k][0]}</option>`).join("");
+$("gadd").onclick=()=>{const c=$("gsel").value;if(!S.charts.includes(c))S.charts.push(c);draw()};
+$("gall").onclick=()=>{S.charts=Object.keys(GR);draw()};$("gclr").onclick=()=>{S.charts=[];draw()};
+$("fcopy").onclick=()=>{const R=calc();R.P.forEach((x,i)=>{const q=S.procs[i];q.fw=x.f.fw;q.flow=x.f.flow;q.pm=x.f.pm;q.fmc=x.f.mc});S.fmode="custom";$("fmode").value="custom";fsteps();draw()};
 let init=T.battery;try{const q=JSON.parse(localStorage.getItem("vsmstudio"));if(q&&Array.isArray(q.procs)&&q.procs.length)init=q}catch(e){}
 load(init);
 </script>
